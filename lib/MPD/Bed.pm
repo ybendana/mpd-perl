@@ -17,6 +17,9 @@ use Try::Tiny;
 use Data::Dump qw/ dump /; # for debugging
 
 use MPD::Bed::Raw;
+use DDP;
+
+use Scalar::Util qw/looks_like_number/;
 
 with 'MPD::Role::Message';
 
@@ -139,6 +142,15 @@ sub _processBedFile {
   my @array;
 
   my @lines = path($bedFile)->lines( { chomp => 1 } );
+
+  @lines = @lines[0 .. 400000 - 1];
+
+  if(@lines > 400000) {
+    $self->log('fatal', "Sorry, currently have limit of 400,000 ranges/primers");
+  }
+
+  # @lines = sort {$a->[0] <=> $}
+  my $id = 0;
   for my $line (@lines) {
     my @fields = split /\t/, $line;
     my ( $chr, $start, $stop, $name ) = @fields;
@@ -160,19 +172,22 @@ sub _processBedFile {
         $chr = 25;
       }
 
-      try {
-        my $b = MPD::Bed::Raw->new(
-          {
-            Chr   => $chr,
-            Start => $start,
-            End   => $stop,
-            Name  => $name,
-          }
-        );
-        push @array, $b;
+      if(!looks_like_number($start) && looks_like_number($stop)) {
+        $self->log('fatal', "chromStart and chromEnd must be numbers, found: $start, $stop"); 
       }
+      
+      $id++;
+
+      if(length($name) > 31) {
+        $name = substr($name, 0, 21) . "$id";
+      }
+
+      try {
+        push @array, [$chr, $start, $stop, $name];
+      }
+
       catch {
-        $self->log( 'info', "ignoring line: $line" );
+        $self->log( 'debug', "ignoring line: $line" );
       };
 
     }
@@ -191,11 +206,14 @@ sub _processBedObjs {
   my %sites;
 
   for my $b (@$bedObjAref) {
-    my $chr = $b->Chr;
-    for ( my $i = $b->Start; $i <= $b->End; $i++ ) {
-      $sites{$chr}{$i} = $b->Name;
+    my $chr = $b->[0];
+    for ( my $i = $b->[1]; $i <= $b->[2]; $i++ ) {
+      $sites{$chr}{$i} = $b->[3];
     }
   }
+
+  undef @$bedObjAref;
+
   return $self->_bedSites( \%sites );
 }
 
@@ -222,14 +240,19 @@ sub _bedSites {
       # assign bed entries
       for ( my $i = 0; $i < @boundaries; $i += 2 ) {
         my $name  = $sitesHref->{$chr}{ $boundaries[$i] };
-        my $entry = MPD::Bed::Raw->new(
-          {
-            Chr   => $chr,
-            Start => $boundaries[$i],
-            End   => $boundaries[ $i + 1 ],
-            Name  => $name,
-          }
-        );
+
+        # replicates
+        # MPD::Bed::Raw->new(
+        #   {
+        #     Chr   => $chr,
+        #     Start => $boundaries[$i],
+        #     End   => $boundaries[ $i + 1 ],
+        #     Name  => $name,
+        #   }
+        # );
+        my $entry = [$chr, boundaries[$i], $boundaries[ $i + 1 ], $name];
+
+
         push @bed, $entry;
 
         # assign covered sites
@@ -240,6 +263,9 @@ sub _bedSites {
       }
     }
   }
+
+  undef %$sitesHref;
+
   return ( \@bed, \%coveredChr, \%coveredSite );
 }
 
