@@ -52,6 +52,6 @@ RUN curl -L https://cpanmin.us | perl - App::cpanminus \
 
 RUN git clone https://github.com/akotlar/mpd-perl /root/mpd-perl \
     && cd /root/mpd-perl && cpanm MPD.tar.gz \
-    cpanm Cpanel::JSON::XS && cpanm DDP && cpanm Log::Fast && cpanm Beanstalk::Client
+    && cpanm Cpanel::JSON::XS && cpanm DDP && cpanm Log::Fast && cpanm Beanstalk::Client
 
 WORKDIR /root/mpd-perl/
