@@ -1,0 +1,26 @@
+---
+BedFile: markers.txt.bed
+isPcrBinary: /root/bin/x86_64/isPcr
+TwoBitFile: /root/2bit/hg38.2bit
+MpdBinary: /root/mpd-c/bin/mpd
+MpdIdx: /root/mpd-dat/hg38.d14.sdx
+dbSnpIdx: /root/mpd-dat/ds_flat.sdx
+
+CoverageThreshold: 0.8
+PrimerSizeMin: 17
+PrimerSizeMax: 27
+PadSize: 60
+PoolMax: 10
+PoolMin: 5
+
+AmpSizeMax: 260
+AmpSizeMin: 230
+TmMax: 62
+TmMin: 57
+GcMax: 0.7
+GcMin: 0.3
+
+Iter: 2
+IncrTm: 1
+IncrTmStep: 1
+IncrAmpSize: 10
